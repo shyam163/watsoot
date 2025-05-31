@@ -19,7 +19,7 @@ WHATSAPP_PHONE_NUMBER_ID = os.getenv('WHATSAPP_PHONE_NUMBER_ID')
 WHATSAPP_API_URL = f"https://graph.facebook.com/v18.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
 
 # Test phone number
-TEST_PHONE_NUMBER = "91986422115"
+TEST_PHONE_NUMBER = "91701923659"
 
 def send_test_message():
     """Send a test message to the specified phone number"""
