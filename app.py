@@ -19,6 +19,32 @@ VERIFY_TOKEN = os.getenv('VERIFY_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_ASSISTANT_ID = os.getenv('OPENAI_ASSISTANT_ID')
 
+# Validate required environment variables
+print("🔧 Checking environment configuration...")
+required_vars = {
+    'WHATSAPP_TOKEN': WHATSAPP_TOKEN,
+    'WHATSAPP_PHONE_NUMBER_ID': WHATSAPP_PHONE_NUMBER_ID,
+    'VERIFY_TOKEN': VERIFY_TOKEN,
+    'OPENAI_API_KEY': OPENAI_API_KEY,
+    'OPENAI_ASSISTANT_ID': OPENAI_ASSISTANT_ID
+}
+
+missing_vars = []
+for var_name, var_value in required_vars.items():
+    if not var_value or var_value.startswith('your_'):
+        missing_vars.append(var_name)
+        print(f"❌ {var_name}: Missing or using placeholder value")
+    else:
+        # Show partial value for security
+        masked_value = var_value[:8] + "..." if len(var_value) > 8 else var_value
+        print(f"✅ {var_name}: {masked_value}")
+
+if missing_vars:
+    print(f"⚠️  WARNING: {len(missing_vars)} environment variables need to be configured:")
+    for var in missing_vars:
+        print(f"   - {var}")
+    print("   The bot may not function properly until these are set.")
+
 # Initialize OpenAI client with error handling
 client = None
 try:
@@ -56,9 +82,13 @@ class ChatManager:
     
     def get_or_create_thread(self, phone_number):
         """Get existing thread or create new one for a phone number"""
+        if not client:
+            raise Exception("OpenAI client not initialized")
+            
         if phone_number not in self.active_threads:
             thread = client.beta.threads.create()
             self.active_threads[phone_number] = thread.id
+            print(f"🆕 Created new thread for {phone_number}: {thread.id}")
         return self.active_threads[phone_number]
     
     def get_assistant_response(self, phone_number, user_message):
@@ -124,10 +154,27 @@ def send_whatsapp_message(phone_number, message):
     }
     
     try:
+        print(f"📤 Sending message to {phone_number}: {message[:50]}...")
         response = requests.post(WHATSAPP_API_URL, headers=headers, json=data)
-        return response.status_code == 200
+        
+        # Log detailed response information
+        print(f"📊 WhatsApp API Response Status: {response.status_code}")
+        print(f"📊 WhatsApp API Response Headers: {dict(response.headers)}")
+        
+        if response.status_code == 200:
+            response_data = response.json()
+            print(f"✅ Message sent successfully: {response_data}")
+            return True
+        else:
+            print(f"❌ WhatsApp API Error: {response.status_code}")
+            print(f"❌ Error Response: {response.text}")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Network error sending WhatsApp message: {e}")
+        return False
     except Exception as e:
-        print(f"Error sending WhatsApp message: {e}")
+        print(f"❌ Unexpected error sending WhatsApp message: {e}")
         return False
 
 @app.route('/webhook', methods=['GET'])
@@ -147,6 +194,7 @@ def webhook():
     """Handle incoming WhatsApp messages"""
     try:
         data = request.get_json()
+        print(f"📨 Received webhook data: {json.dumps(data, indent=2)}")
         
         if 'entry' in data:
             for entry in data['entry']:
@@ -157,23 +205,39 @@ def webhook():
                                 phone_number = message['from']
                                 message_text = message.get('text', {}).get('body', '')
                                 
+                                print(f"📱 Incoming message from {phone_number}: {message_text}")
+                                
                                 if message_text:
                                     # Save incoming message
                                     chat_manager.save_message(phone_number, "User", message_text)
                                     
                                     # Process message in background to avoid timeout
                                     def process_message():
-                                        # Get assistant response
-                                        response = chat_manager.get_assistant_response(phone_number, message_text)
-                                        
-                                        # Save assistant response
-                                        chat_manager.save_message(phone_number, "Assistant", response)
-                                        
-                                        # Send response via WhatsApp
-                                        send_whatsapp_message(phone_number, response)
+                                        try:
+                                            print(f"🔄 Processing message from {phone_number}: {message_text}")
+                                            
+                                            # Get assistant response
+                                            response = chat_manager.get_assistant_response(phone_number, message_text)
+                                            print(f"🤖 Assistant response: {response[:100]}...")
+                                            
+                                            # Save assistant response
+                                            chat_manager.save_message(phone_number, "Assistant", response)
+                                            
+                                            # Send response via WhatsApp
+                                            success = send_whatsapp_message(phone_number, response)
+                                            if success:
+                                                print(f"✅ Successfully sent response to {phone_number}")
+                                            else:
+                                                print(f"❌ Failed to send response to {phone_number}")
+                                                
+                                        except Exception as e:
+                                            print(f"❌ Error in background message processing: {e}")
+                                            import traceback
+                                            traceback.print_exc()
                                     
                                     # Run in background thread
                                     thread = threading.Thread(target=process_message)
+                                    thread.daemon = True  # Ensure thread doesn't prevent app shutdown
                                     thread.start()
         
         return jsonify({'status': 'success'}), 200
