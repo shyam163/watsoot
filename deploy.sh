@@ -3,6 +3,12 @@
 # WhatsApp ChatBot Deployment Script for Oracle Cloud
 # This script helps deploy the chatbot to your Oracle Cloud server
 
+# Ensure we're running with bash
+if [ -z "$BASH_VERSION" ]; then
+    echo "❌ This script requires bash. Please run with: bash deploy.sh"
+    exit 1
+fi
+
 set -e
 
 echo "🚀 WhatsApp ChatBot Deployment Script"
@@ -34,7 +40,7 @@ print_error() {
 }
 
 # Check if running as root
-if [[ $EUID -eq 0 ]]; then
+if [ "$EUID" -eq 0 ]; then
    print_error "This script should not be run as root for security reasons"
    exit 1
 fi
@@ -44,7 +50,7 @@ install_dependencies() {
     print_status "Installing system dependencies..."
     
     sudo apt update
-    sudo apt install -y python3 python3-pip python3-venv nginx certbot python3-certbot-nginx
+    sudo apt install -y python3 python3-pip python3-venv nginx certbot python3-certbot-nginx rsync
     
     print_status "System dependencies installed"
 }
@@ -56,8 +62,9 @@ setup_app_directory() {
     sudo mkdir -p $APP_DIR
     sudo chown $USER:$USER $APP_DIR
     
-    # Copy application files
-    cp -r . $APP_DIR/
+    # Copy application files (excluding .git directory to avoid permission issues)
+    print_status "Copying application files..."
+    rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='venv' . $APP_DIR/
     cd $APP_DIR
     
     print_status "Application directory setup complete"
@@ -216,7 +223,7 @@ main() {
     echo ""
     
     # Check if .env file exists
-    if [[ ! -f ".env" ]]; then
+    if [ ! -f ".env" ]; then
         print_warning ".env file not found. Please create it before deployment."
         print_warning "You can copy from .env.example and fill in your values."
         exit 1
