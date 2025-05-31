@@ -30,14 +30,18 @@ def send_test_message():
     print()
     
     # Check configuration
-    if not WHATSAPP_TOKEN or WHATSAPP_TOKEN.startswith('your_'):
+    if not WHATSAPP_TOKEN or WHATSAPP_TOKEN.startswith('your_') or WHATSAPP_TOKEN == 'your_whatsapp_access_token_here':
         print("❌ WHATSAPP_TOKEN not configured properly")
-        print("   Please update your .env file with a valid token")
+        print(f"   Current value: {WHATSAPP_TOKEN}")
+        print("   Please update your .env file with a valid token from Meta Developer Console")
+        print("   Get your token from: https://developers.facebook.com/apps/")
         return False
     
-    if not WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_PHONE_NUMBER_ID.startswith('your_'):
+    if not WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_PHONE_NUMBER_ID.startswith('your_') or WHATSAPP_PHONE_NUMBER_ID == 'your_phone_number_id_here':
         print("❌ WHATSAPP_PHONE_NUMBER_ID not configured properly")
+        print(f"   Current value: {WHATSAPP_PHONE_NUMBER_ID}")
         print("   Please update your .env file with a valid phone number ID")
+        print("   Get your phone number ID from Meta Developer Console > WhatsApp > API Setup")
         return False
     
     print(f"✅ Using Token: {WHATSAPP_TOKEN[:10]}...")
