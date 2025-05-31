@@ -7,11 +7,29 @@ This script helps test the webhook functionality locally
 import requests
 import json
 import time
+import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+print(f"📂 Current working directory: {os.getcwd()}")
+print(f"📄 .env file exists: {os.path.exists('.env')}")
+env_loaded = load_dotenv()
+print(f"📁 .env file loaded: {env_loaded}")
 
 # Test configuration
-WEBHOOK_URL = "http://localhost:5000/webhook"
-VERIFY_TOKEN = "your_webhook_verify_token_here"
+WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'http://hexawhite.quantumautomata.in:5000/webhook')
+VERIFY_TOKEN = os.getenv('VERIFY_TOKEN', 'your_webhook_verify_token_here')
+
+# Debug: Show what configuration is being used
+print(f"🌐 Testing webhook URL: {WEBHOOK_URL}")
+print(f"🔑 Using verify token: {VERIFY_TOKEN[:10]}..." if len(VERIFY_TOKEN) > 10 else f"🔑 Using verify token: {VERIFY_TOKEN}")
+
+# Additional debugging
+if WEBHOOK_URL == 'http://hexawhite.quantumautomata.in:5000/webhook':
+    print("⚠️  WARNING: Using default localhost URL - .env WEBHOOK_URL not found or loaded")
+if VERIFY_TOKEN == 'your_webhook_verify_token_here':
+    print("⚠️  WARNING: Using default verify token - .env VERIFY_TOKEN not found or loaded")
 
 def test_webhook_verification():
     """Test webhook verification endpoint"""
@@ -102,7 +120,8 @@ def test_health_endpoint():
     print("❤️  Testing health endpoint...")
     
     try:
-        response = requests.get("http://localhost:5000/health")
+        health_url = WEBHOOK_URL.replace('/webhook', '/health')
+        response = requests.get(health_url)
         if response.status_code == 200:
             data = response.json()
             print(f"✅ Health check successful: {data['status']}")
@@ -119,7 +138,8 @@ def test_chat_history_endpoint():
     print("📚 Testing chat history endpoint...")
     
     try:
-        response = requests.get("http://localhost:5000/chat-history/1234567890")
+        chat_history_url = WEBHOOK_URL.replace('/webhook', '/chat-history/1234567890')
+        response = requests.get(chat_history_url)
         if response.status_code in [200, 404]:  # 404 is OK if no chat history exists
             print("✅ Chat history endpoint working")
             return True
@@ -135,7 +155,8 @@ def test_active_chats_endpoint():
     print("📋 Testing active chats endpoint...")
     
     try:
-        response = requests.get("http://localhost:5000/active-chats")
+        active_chats_url = WEBHOOK_URL.replace('/webhook', '/active-chats')
+        response = requests.get(active_chats_url)
         if response.status_code == 200:
             data = response.json()
             print(f"✅ Active chats endpoint working: {data['total_chats']} chats found")
