@@ -4,7 +4,6 @@ import requests
 from datetime import datetime
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from openai import OpenAI
 import threading
 import time
 
@@ -20,8 +19,18 @@ VERIFY_TOKEN = os.getenv('VERIFY_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_ASSISTANT_ID = os.getenv('OPENAI_ASSISTANT_ID')
 
-# Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Initialize OpenAI client with error handling
+client = None
+try:
+    from openai import OpenAI
+    if OPENAI_API_KEY:
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        print("✅ OpenAI client initialized successfully")
+    else:
+        print("⚠️  OPENAI_API_KEY not found in environment variables")
+except Exception as e:
+    print(f"❌ Error initializing OpenAI client: {e}")
+    print("The app will start but OpenAI features will be disabled")
 
 # WhatsApp API URL
 WHATSAPP_API_URL = f"https://graph.facebook.com/v18.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
